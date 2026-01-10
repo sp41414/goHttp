@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"goHttp/internal/headers"
 	"io"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -14,6 +15,7 @@ type parserState int
 const (
 	StateInit parserState = iota
 	requestStateParsingHeaders
+	requestStateParsingBody
 	StateDone
 )
 
@@ -70,6 +72,18 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		return nil, fmt.Errorf("Error: found EOF before end of request line")
 	}
 
+	contentLengthHeaders := request.Headers.Get("Content-Length")
+	if contentLengthHeaders != "" {
+		clh, err := strconv.Atoi(contentLengthHeaders)
+		if err != nil {
+			return nil, fmt.Errorf("Error: could not parse Content-Length")
+		}
+		cl := len(request.Body)
+		if clh != cl {
+			return nil, fmt.Errorf("Error: found EOF before length body %d is the same as Content-Length %d\n", cl, clh)
+		}
+	}
+
 	return request, nil
 }
 
@@ -95,15 +109,34 @@ func (r *Request) parse(data []byte) (int, error) {
 			}
 			n, done, err := r.Headers.Parse(data[consumed:])
 			if err != nil {
-				return 0, err
+				return consumed, err
 			}
 			if !done && n == 0 {
 				return consumed, nil
 			}
 			consumed += n
 			if done {
+				r.state = requestStateParsingBody
+			}
+		case requestStateParsingBody:
+			clHeader := r.Headers.Get("Content-Length")
+			if clHeader == "" {
+				r.state = StateDone
+				return consumed, nil
+			}
+
+			contentLength, err := strconv.Atoi(clHeader)
+			if err != nil {
+				return consumed, fmt.Errorf("invalid body: content-length is not a number (%v)", err)
+			}
+
+			n := len(data[consumed:])
+			r.Body = append(r.Body, data[consumed:consumed+n]...)
+			consumed += n
+			if contentLength == len(r.Body) {
 				r.state = StateDone
 			}
+			return consumed, nil
 		case StateDone:
 			return consumed, nil
 		}

@@ -23,6 +23,7 @@ func acceptHandler(c net.Conn) {
 	for k, v := range req.Headers {
 		fmt.Printf("- %s: %s\n", k, v)
 	}
+	fmt.Printf("Body: %s\n", string(req.Body))
 }
 
 func main() {

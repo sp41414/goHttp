@@ -11,12 +11,12 @@ import (
 func main() {
 	raddr, err := net.ResolveUDPAddr("udp", constants.UdpPort)
 	if err != nil {
-		log.Fatalf("Error: could not resolve address (%v)", err)
+		log.Fatalf("Error: could not resolve address (%v)\n", err)
 	}
 
 	conn, err := net.DialUDP(raddr.Network(), nil, raddr)
 	if err != nil {
-		log.Fatalf("Error: could not dial UDP (%v)", err)
+		log.Fatalf("Error: could not dial UDP (%v)\n", err)
 	}
 	defer conn.Close()
 
@@ -25,12 +25,12 @@ func main() {
 		print("> ")
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			log.Printf("read error: %v", err)
+			log.Printf("read error: %v\n", err)
 			continue
 		}
 
 		if _, err := conn.Write([]byte(line)); err != nil {
-			log.Printf("write error: %v", err)
+			log.Printf("write error: %v\n", err)
 		}
 	}
 }
