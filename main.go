@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
+	"net"
 	"strings"
 )
+
+const tcpPort = ":42069"
 
 func getLinesChannel(f io.ReadCloser) <-chan string {
 	channel := make(chan string)
@@ -33,7 +35,7 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 				if err == io.EOF {
 					break
 				}
-				fmt.Printf("Error: could not read %d bytes: %v", n, err)
+				fmt.Printf("Error: could not read %d bytes (%v)\n", n, err)
 				return
 			}
 		}
@@ -45,14 +47,32 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 	return channel
 }
 
+func acceptHandler(c net.Conn) {
+	defer c.Close()
+	defer fmt.Println("Connection closed")
+	fmt.Println("Connection accepted")
+
+	ch := getLinesChannel(c)
+	for val := range ch {
+		fmt.Println(val)
+	}
+}
+
 func main() {
-	file, err := os.Open("./messages.txt")
+	conn, err := net.Listen("tcp", tcpPort)
 	if err != nil {
-		log.Fatalf("Error: could not open file (%v)", err)
+		log.Fatalf("Error: tcp listener failed to start (%v)\n", err)
 	}
 
-	ch := getLinesChannel(file)
-	for v := range ch {
-		fmt.Printf("read: %s\n", v)
+	defer conn.Close()
+	fmt.Printf("Server running on PORT %s\n", tcpPort)
+
+	for {
+		accept, err := conn.Accept()
+		if err != nil {
+			log.Fatalf("Error: tcp listener failed to accept (%v)\n", err)
+		}
+
+		go acceptHandler(accept)
 	}
 }
