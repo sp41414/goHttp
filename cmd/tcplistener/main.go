@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
+	"goHttp/utils"
 	"io"
 	"log"
 	"net"
 	"strings"
 )
-
-const tcpPort = ":42069"
 
 func getLinesChannel(f io.ReadCloser) <-chan string {
 	channel := make(chan string)
@@ -59,13 +58,13 @@ func acceptHandler(c net.Conn) {
 }
 
 func main() {
-	conn, err := net.Listen("tcp", tcpPort)
+	conn, err := net.Listen("tcp", utils.TcpPort)
 	if err != nil {
 		log.Fatalf("Error: tcp listener failed to start (%v)\n", err)
 	}
 
 	defer conn.Close()
-	fmt.Printf("Server running on PORT %s\n", tcpPort)
+	fmt.Printf("Server running on PORT %s\n", utils.TcpPort)
 
 	for {
 		accept, err := conn.Accept()
