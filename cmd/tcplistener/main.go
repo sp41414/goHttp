@@ -3,57 +3,25 @@ package main
 import (
 	"fmt"
 	constants "goHttp"
-	"io"
+	"goHttp/internal/request"
 	"log"
 	"net"
-	"strings"
 )
-
-func getLinesChannel(f io.ReadCloser) <-chan string {
-	channel := make(chan string)
-	buffer := make([]byte, 8)
-
-	go func() {
-		defer f.Close()
-		defer close(channel)
-		str := ""
-		for {
-			n, err := f.Read(buffer)
-
-			if n > 0 {
-				parts := strings.Split(string(buffer[:n]), "\n")
-				for _, v := range parts[:len(parts)-1] {
-					channel <- str + v
-					str = ""
-				}
-
-				str += parts[len(parts)-1]
-			}
-
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				fmt.Printf("Error: could not read %d bytes (%v)\n", n, err)
-				return
-			}
-		}
-		if str != "" {
-			channel <- str
-		}
-	}()
-
-	return channel
-}
 
 func acceptHandler(c net.Conn) {
 	defer c.Close()
 	defer fmt.Println("Connection closed")
 	fmt.Println("Connection accepted")
 
-	ch := getLinesChannel(c)
-	for val := range ch {
-		fmt.Println(val)
+	req, err := request.RequestFromReader(c)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Printf("Request line:\n- Method: %s\n- Target: %s\n- Version: %s\n", req.RequestLine.Method, req.RequestLine.RequestTarget, req.RequestLine.HttpVersion)
+	fmt.Println("Headers:")
+	for k, v := range req.Headers {
+		fmt.Printf("- %s: %s\n", k, v)
 	}
 }
 
