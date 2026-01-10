@@ -24,6 +24,7 @@ func main() {
 
 		for _, v := range parts[:len(parts)-1] {
 			fmt.Printf("read: %s\n", str+v)
+			str = ""
 		}
 
 		str += parts[len(parts)-1]
