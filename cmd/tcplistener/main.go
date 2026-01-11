@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	constants "goHttp"
 	"goHttp/internal/request"
 	"log"
 	"net"
 )
+
+const tcpPort = ":42069"
 
 func acceptHandler(c net.Conn) {
 	defer c.Close()
@@ -27,13 +28,13 @@ func acceptHandler(c net.Conn) {
 }
 
 func main() {
-	conn, err := net.Listen("tcp", constants.TcpPort)
+	conn, err := net.Listen("tcp", tcpPort)
 	if err != nil {
 		log.Fatalf("Error: tcp listener failed to start (%v)\n", err)
 	}
 
 	defer conn.Close()
-	fmt.Printf("Server running on PORT %s\n", constants.TcpPort)
+	fmt.Printf("Server running on PORT %s\n", tcpPort)
 
 	for {
 		accept, err := conn.Accept()

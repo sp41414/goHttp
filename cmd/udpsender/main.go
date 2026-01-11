@@ -2,14 +2,15 @@ package main
 
 import (
 	"bufio"
-	constants "goHttp"
 	"log"
 	"net"
 	"os"
 )
 
+const udpPort = "localhost:42069"
+
 func main() {
-	raddr, err := net.ResolveUDPAddr("udp", constants.UdpPort)
+	raddr, err := net.ResolveUDPAddr("udp", udpPort)
 	if err != nil {
 		log.Fatalf("Error: could not resolve address (%v)\n", err)
 	}
