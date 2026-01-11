@@ -57,6 +57,10 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	return idx + 2, false, nil
 }
 
+func (h Headers) Override(key, value string) {
+	h[strings.ToLower(key)] = value
+}
+
 func isValidHeaderChar(c rune) bool {
 	if 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' {
 		return true

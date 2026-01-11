@@ -9,36 +9,60 @@ import (
 
 type StatusCode int
 
+type writerState int
+type Writer struct {
+	inner io.Writer
+	State writerState
+}
+
+const (
+	StatusLine writerState = iota
+	Header
+	Body
+)
+
 const (
 	OK                    StatusCode = 200
 	BAD_REQUEST           StatusCode = 400
 	INTERNAL_SERVER_ERROR StatusCode = 500
 )
 
-func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
+func NewWriter(inner io.Writer) *Writer {
+	return &Writer{
+		State: StatusLine,
+		inner: inner,
+	}
+}
+
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
+	if w.State != StatusLine {
+		return fmt.Errorf("Error: unexpected state, expected state to be StatusLine")
+	}
+
 	switch statusCode {
 	case OK:
-		_, err := w.Write([]byte("HTTP/1.1 200 OK\r\n"))
+		_, err := w.inner.Write([]byte("HTTP/1.1 200 OK\r\n"))
 		if err != nil {
 			return err
 		}
 	case BAD_REQUEST:
-		_, err := w.Write([]byte("HTTP/1.1 400 Bad Request\r\n"))
+		_, err := w.inner.Write([]byte("HTTP/1.1 400 Bad Request\r\n"))
 		if err != nil {
 			return err
 		}
 	case INTERNAL_SERVER_ERROR:
-		_, err := w.Write([]byte("HTTP/1.1 500 Internal Server Error\r\n"))
+		_, err := w.inner.Write([]byte("HTTP/1.1 500 Internal Server Error\r\n"))
 		if err != nil {
 			return err
 		}
 	default:
-		_, err := w.Write([]byte(fmt.Sprintf("HTTP/1.1 %d \r\n", statusCode)))
+		_, err := w.inner.Write([]byte(fmt.Sprintf("HTTP/1.1 %d \r\n", statusCode)))
 		if err != nil {
 			return err
 		}
 	}
 
+	w.State = Header
 	return nil
 }
 
@@ -50,18 +74,37 @@ func GetDefaultHeaders(contentLen int) headers.Headers {
 	}
 }
 
-func WriteHeaders(w io.Writer, headers headers.Headers) error {
+func (w *Writer) WriteHeaders(headers headers.Headers) error {
+	if w.State != Header {
+		return fmt.Errorf("Error: unexpected state, expected state to be Header")
+	}
+
 	for k, v := range headers {
-		_, err := w.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, v)))
+		_, err := w.inner.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, v)))
 		if err != nil {
 			return err
 		}
 	}
+
 	// blank line before the body
-	_, err := w.Write([]byte("\r\n"))
+	_, err := w.inner.Write([]byte("\r\n"))
 	if err != nil {
 		return err
 	}
 
+	w.State = Body
 	return nil
+}
+
+func (w *Writer) WriteBody(p []byte) (int, error) {
+	if w.State != Body {
+		return 0, fmt.Errorf("Error: unexpected state, expected state to be Body")
+	}
+
+	n, err := w.inner.Write(p)
+	if err != nil {
+		return 0, err
+	}
+
+	return n, nil
 }
