@@ -19,6 +19,7 @@ const (
 	StatusLine writerState = iota
 	Header
 	Body
+	Done
 )
 
 const (
@@ -106,5 +107,45 @@ func (w *Writer) WriteBody(p []byte) (int, error) {
 		return 0, err
 	}
 
+	return n, nil
+}
+
+func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
+	if w.State != Body {
+		return 0, fmt.Errorf("Error: unexpected state, expected state to be Body")
+	}
+
+	n := len(p)
+	hl := fmt.Sprintf("%x", n)
+
+	_, err := w.inner.Write([]byte(hl + "\r\n"))
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = w.inner.Write(p)
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = w.inner.Write([]byte("\r\n"))
+	if err != nil {
+		return 0, err
+	}
+
+	return n, nil
+}
+
+func (w *Writer) WriteChunkedBodyDone() (int, error) {
+	if w.State != Body {
+		return 0, fmt.Errorf("Error: unexpected state, expected state to be Body")
+	}
+
+	n, err := w.inner.Write([]byte("0\r\n\r\n"))
+	if err != nil {
+		return 0, err
+	}
+
+	w.State = Done
 	return n, nil
 }

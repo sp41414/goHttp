@@ -9,7 +9,7 @@ import (
 type Headers map[string]string
 
 func NewHeaders() Headers {
-	return map[string]string{}
+	return Headers{}
 }
 
 func (h Headers) Get(key string) string {
@@ -57,8 +57,36 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	return idx + 2, false, nil
 }
 
-func (h Headers) Override(key, value string) {
+func (h Headers) OverrideValue(key, value string) {
 	h[strings.ToLower(key)] = value
+}
+
+func (h Headers) Override(prevKey, newKey, value string) {
+	if _, ok := h[strings.ToLower(prevKey)]; ok {
+		h[strings.ToLower(newKey)] = value
+		delete(h, strings.ToLower(prevKey))
+	} else {
+		h[strings.ToLower(newKey)] = value
+	}
+}
+
+func (h Headers) Add(key, value string) (bool, error) {
+	for _, c := range key {
+		r := rune(c)
+		if !isValidHeaderChar(r) {
+			return false, fmt.Errorf("invalid header key character (%v): must only contain alphabetical characters, digits, and special characters", r)
+		}
+	}
+
+	key = strings.ToLower(strings.TrimSpace(key))
+	value = strings.TrimSpace(value)
+	if _, ok := h[string(key)]; ok {
+		h[string(key)] += fmt.Sprintf(", %s", string(value))
+	} else {
+		h[string(key)] = string(value)
+	}
+
+	return true, nil
 }
 
 func isValidHeaderChar(c rune) bool {
