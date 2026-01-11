@@ -2,7 +2,9 @@ package server
 
 import (
 	"fmt"
+	"goHttp/internal/response"
 	"log"
+
 	// "goHttp/internal/request"
 	"net"
 	"sync/atomic"
@@ -54,5 +56,14 @@ func (s *Server) handle(conn net.Conn) {
 	// if err != nil {
 	// 	log.Println(err)
 	// }
-	conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello World!"))
+	err := response.WriteStatusLine(conn, response.OK)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	headers := response.GetDefaultHeaders(0)
+	err = response.WriteHeaders(conn, headers)
+	if err != nil {
+		log.Println(err)
+	}
 }
