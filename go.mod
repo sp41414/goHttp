@@ -1,4 +1,4 @@
-module goHttp
+module github.com/sp41414/goHttp
 
 go 1.25.5
 

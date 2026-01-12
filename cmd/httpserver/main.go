@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"goHttp/internal/headers"
-	"goHttp/internal/request"
-	"goHttp/internal/response"
-	"goHttp/internal/server"
+	"github.com/sp41414/goHttp/internal/headers"
+	"github.com/sp41414/goHttp/internal/request"
+	"github.com/sp41414/goHttp/internal/response"
+	"github.com/sp41414/goHttp/internal/server"
 	"io"
 	"log"
 	"net/http"
@@ -18,7 +18,7 @@ import (
 	"syscall"
 )
 
-const port = 42069
+const port = 9000
 
 func handler(w *response.Writer, req *request.Request) {
 	if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin/") {

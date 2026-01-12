@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"goHttp/internal/request"
+	"github.com/sp41414/goHttp/internal/request"
 	"log"
 	"net"
 )
 
-const tcpPort = ":42069"
+const tcpPort = ":2000"
 
 func acceptHandler(c net.Conn) {
 	defer c.Close()

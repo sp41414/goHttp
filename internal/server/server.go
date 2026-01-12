@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
-	"goHttp/internal/request"
-	"goHttp/internal/response"
+	"github.com/sp41414/goHttp/internal/request"
+	"github.com/sp41414/goHttp/internal/response"
 	"log"
 	"net"
 	"sync/atomic"

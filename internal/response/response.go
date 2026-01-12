@@ -2,7 +2,7 @@ package response
 
 import (
 	"fmt"
-	"goHttp/internal/headers"
+	"github.com/sp41414/goHttp/internal/headers"
 	"io"
 	"strconv"
 	"strings"
