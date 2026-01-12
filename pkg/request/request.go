@@ -1,37 +1,52 @@
+// Package request provides a streaming parser for HTTP/1.1 requests.
+// It handles the transition from the initial request line through headers
+// and into the message body.
 package request
 
 import (
 	"bytes"
 	"fmt"
-	"github.com/sp41414/goHttp/internal/headers"
+	"github.com/sp41414/goHttp/pkg/headers"
 	"io"
 	"strconv"
 	"strings"
 	"unicode"
 )
 
+// parserState represents the current phase of the HTTP request parsing process.
 type parserState int
 
 const (
+	// StateInit is the starting state before the Request Line has been parsed.
 	StateInit parserState = iota
 	requestStateParsingHeaders
 	requestStateParsingBody
+	// StateDone indicates the request has been fully parsed, including the body.
 	StateDone
 )
 
+// Request represents a complete or partially parsed HTTP request.
 type Request struct {
 	RequestLine RequestLine
 	Headers     headers.Headers
 	Body        []byte
-	state       parserState
+	// state tracks the internal progress of the parser.
+	state parserState
 }
 
+// RequestLine contains the metadata parsed from the first line of an HTTP request.
 type RequestLine struct {
-	HttpVersion   string
-	RequestTarget string
-	Method        string
+	HttpVersion   string // e.g., "1.1"
+	RequestTarget string // e.g., "/index.html"
+	Method        string // e.g., "GET"
 }
 
+// RequestFromReader reads from an io.Reader and returns a fully parsed Request.
+// It manages the internal buffer and continues reading until the request is
+// complete or an error occurs.
+//
+// If a Content-Length header is present, it ensures the body matches that length
+// before returning successfully.
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	request := &Request{
 		state: StateInit,
@@ -87,6 +102,9 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	return request, nil
 }
 
+// parse processes a slice of bytes and updates the request state.
+// It returns the number of bytes consumed. This is useful for incremental
+// parsing where data might arrive in chunks.
 func (r *Request) parse(data []byte) (int, error) {
 	consumed := 0
 	for {
@@ -143,6 +161,8 @@ func (r *Request) parse(data []byte) (int, error) {
 	}
 }
 
+// parseRequestLine extracts the Method, RequestTarget, and HttpVersion from the
+// first line of a request. It expects the line to end with \r\n.
 func parseRequestLine(data []byte) (*RequestLine, int, error) {
 	idx := bytes.Index(data, []byte("\r\n"))
 	if idx == -1 {

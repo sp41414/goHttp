@@ -1,27 +1,35 @@
+// Package response provides a stateful HTTP/1.1 response writer.
+// It ensures that response components (Status Line, Headers, Body, and Trailers)
+// are written in the correct order as defined by the HTTP specification.
 package response
 
 import (
 	"fmt"
-	"github.com/sp41414/goHttp/internal/headers"
+	"github.com/sp41414/goHttp/pkg/headers"
 	"io"
 	"strconv"
 	"strings"
 )
 
+// StatusCode represents an HTTP response status code e.g.(200, 400, 500).
 type StatusCode int
 
-type writerState int
+// Writer wraps an io.Writer to manage the lifecycle of an HTTP response.
+// It maintains an internal state to prevent out-of-order writes.
 type Writer struct {
 	inner io.Writer
 	State writerState
 }
 
+// writerState defines the valid stages of a response lifecycle.
+type writerState int
+
 const (
-	StatusLine writerState = iota
-	Header
-	Body
-	Trailers
-	Done
+	StatusLine writerState = iota // Initial state: expectation of WriteStatusLine
+	Header                        // Expecting WriteHeaders
+	Body                          // Expecting WriteBody or WriteChunkedBody
+	Trailers                      // Expecting WriteTrailers after chunked transfer
+	Done                          // Final state: no more writes allowed
 )
 
 const (
@@ -30,6 +38,7 @@ const (
 	INTERNAL_SERVER_ERROR StatusCode = 500
 )
 
+// NewWriter initializes a Writer in the StatusLine state.
 func NewWriter(inner io.Writer) *Writer {
 	return &Writer{
 		State: StatusLine,
@@ -37,6 +46,8 @@ func NewWriter(inner io.Writer) *Writer {
 	}
 }
 
+// WriteStatusLine writes the HTTP/1.1 status line.
+// It transitions the writer from StatusLine to Header state.
 func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 	if w.State != StatusLine {
 		return fmt.Errorf("Error: unexpected state, expected state to be StatusLine")
@@ -69,6 +80,8 @@ func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 	return nil
 }
 
+// GetDefaultHeaders returns a Headers map pre-populated with standard
+// fields like content-length, connection: close, and text/plain content-type.
 func GetDefaultHeaders(contentLen int) headers.Headers {
 	return headers.Headers{
 		"content-length": strconv.Itoa(contentLen),
@@ -77,6 +90,8 @@ func GetDefaultHeaders(contentLen int) headers.Headers {
 	}
 }
 
+// WriteHeaders writes the provided headers followed by the required
+// empty line (\r\n). It transitions the writer to the Body state.
 func (w *Writer) WriteHeaders(headers headers.Headers) error {
 	if w.State != Header {
 		return fmt.Errorf("Error: unexpected state, expected state to be Header")
@@ -99,6 +114,8 @@ func (w *Writer) WriteHeaders(headers headers.Headers) error {
 	return nil
 }
 
+// WriteBody writes raw data to the inner writer.
+// It should only be called after WriteHeaders.
 func (w *Writer) WriteBody(p []byte) (int, error) {
 	if w.State != Body {
 		return 0, fmt.Errorf("Error: unexpected state, expected state to be Body")
@@ -112,6 +129,8 @@ func (w *Writer) WriteBody(p []byte) (int, error) {
 	return n, nil
 }
 
+// WriteChunkedBody writes a single data chunk using HTTP Chunked Transfer Encoding.
+// It automatically handles the hex-length prefix and CRLF suffixes.
 func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 	if w.State != Body {
 		return 0, fmt.Errorf("Error: unexpected state, expected state to be Body")
@@ -138,6 +157,8 @@ func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 	return n, nil
 }
 
+// WriteChunkedBodyDone writes the final "0" chunk to signal the end of a
+// chunked response and transitions the state to allow for Trailers.
 func (w *Writer) WriteChunkedBodyDone() (int, error) {
 	if w.State != Body {
 		return 0, fmt.Errorf("Error: unexpected state, expected state to be Body")
@@ -152,6 +173,8 @@ func (w *Writer) WriteChunkedBodyDone() (int, error) {
 	return n, nil
 }
 
+// WriteTrailers writes trailing headers and the final terminating empty line.
+// It transitions the writer to the Done state.
 func (w *Writer) WriteTrailers(h headers.Headers) error {
 	if w.State != Trailers {
 		return fmt.Errorf("Error: unexpected state, expected state to be Trailers")

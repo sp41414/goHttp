@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/sp41414/goHttp/internal/request"
+	"github.com/sp41414/goHttp/pkg/request"
 	"log"
 	"net"
 )

@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"github.com/sp41414/goHttp/internal/headers"
-	"github.com/sp41414/goHttp/internal/request"
-	"github.com/sp41414/goHttp/internal/response"
-	"github.com/sp41414/goHttp/internal/server"
+	"github.com/sp41414/goHttp/pkg/headers"
+	"github.com/sp41414/goHttp/pkg/request"
+	"github.com/sp41414/goHttp/pkg/response"
+	"github.com/sp41414/goHttp/pkg/server"
 	"io"
 	"log"
 	"net/http"
@@ -37,18 +37,18 @@ func handler(w *response.Writer, req *request.Request) {
 				continue
 			}
 
-			_, err := h.Add(loweredK, strings.Join(v, ", "))
+			err := h.Add(loweredK, strings.Join(v, ", "))
 			if err != nil {
 				log.Println(err)
 				return
 			}
 		}
-		_, err = h.Add("Transfer-Encoding", "chunked")
+		err = h.Add("Transfer-Encoding", "chunked")
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		_, err = h.Add("Trailer", "X-Content-SHA256, X-Content-Length")
+		err = h.Add("Trailer", "X-Content-SHA256, X-Content-Length")
 		if err != nil {
 			log.Println(err)
 			return
