@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-const udpPort = "localhost:9000"
+const udpPort = "localhost:2000"
 
 func main() {
 	raddr, err := net.ResolveUDPAddr("udp", udpPort)
