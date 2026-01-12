@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"goHttp/internal/headers"
 	"goHttp/internal/request"
@@ -11,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -27,27 +30,33 @@ func handler(w *response.Writer, req *request.Request) {
 		}
 		w.WriteStatusLine(response.StatusCode(res.StatusCode))
 
-		headers := headers.NewHeaders()
+		h := headers.NewHeaders()
 		for k, v := range res.Header {
 			loweredK := strings.ToLower(k)
 			if loweredK == "content-length" || loweredK == "transfer-encoding" {
 				continue
 			}
 
-			_, err := headers.Add(loweredK, strings.Join(v, ", "))
+			_, err := h.Add(loweredK, strings.Join(v, ", "))
 			if err != nil {
 				log.Println(err)
 				return
 			}
 		}
-		_, err = headers.Add("Transfer-Encoding", "chunked")
+		_, err = h.Add("Transfer-Encoding", "chunked")
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		w.WriteHeaders(headers)
+		_, err = h.Add("Trailer", "X-Content-SHA256, X-Content-Length")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		w.WriteHeaders(h)
 
 		chunk := make([]byte, 1024)
+		buf := bytes.Buffer{}
 		for {
 			n, err := res.Body.Read(chunk)
 			if err != nil {
@@ -63,10 +72,32 @@ func handler(w *response.Writer, req *request.Request) {
 				log.Println(err)
 				return
 			}
+
+			_, err = buf.Write(chunk[:n])
+			if err != nil {
+				log.Println(err)
+				return
+			}
 		}
 
-		w.WriteChunkedBodyDone()
-		return
+		_, err = w.WriteChunkedBodyDone()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		sum := sha256.Sum256(buf.Bytes())
+		hexEncodedHash := fmt.Sprintf("%x", sum[:])
+
+		trailerHeaders := headers.NewHeaders()
+		trailerHeaders.Add("X-Content-SHA256", hexEncodedHash)
+		trailerHeaders.Add("X-Content-Length", strconv.Itoa(buf.Len()))
+
+		err = w.WriteTrailers(trailerHeaders)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	}
 
 	switch req.RequestLine.RequestTarget {

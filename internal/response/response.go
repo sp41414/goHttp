@@ -5,6 +5,7 @@ import (
 	"goHttp/internal/headers"
 	"io"
 	"strconv"
+	"strings"
 )
 
 type StatusCode int
@@ -19,6 +20,7 @@ const (
 	StatusLine writerState = iota
 	Header
 	Body
+	Trailers
 	Done
 )
 
@@ -141,11 +143,34 @@ func (w *Writer) WriteChunkedBodyDone() (int, error) {
 		return 0, fmt.Errorf("Error: unexpected state, expected state to be Body")
 	}
 
-	n, err := w.inner.Write([]byte("0\r\n\r\n"))
+	n, err := w.inner.Write([]byte("0\r\n"))
 	if err != nil {
 		return 0, err
 	}
 
-	w.State = Done
+	w.State = Trailers
 	return n, nil
+}
+
+func (w *Writer) WriteTrailers(h headers.Headers) error {
+	if w.State != Trailers {
+		return fmt.Errorf("Error: unexpected state, expected state to be Trailers")
+	}
+
+	for k, v := range h {
+		loweredK := strings.ToLower(strings.TrimSpace(k))
+		_, err := w.inner.Write([]byte(fmt.Sprintf("%s: %s\r\n", loweredK, strings.TrimSpace(v))))
+		if err != nil {
+			return err
+		}
+	}
+
+	// blank line before the end
+	_, err := w.inner.Write([]byte("\r\n"))
+	if err != nil {
+		return err
+	}
+
+	w.State = Done
+	return nil
 }
